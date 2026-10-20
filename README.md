@@ -233,11 +233,13 @@ Documentadas porque não são óbvias:
    `byte_data` com valor 0, e é assim que o HAL traduz.
 10. **Efeitos precisam de uma origem de tempo compartilhada.** Dar a cada alvo
     a própria origem defasa tudo, porque registrá-los é sequencial e lento.
-11. **Os dois pentes de memória se alinham pelo `NUM_SLOTS`, não pelo índice.**
-    O registrador `0x27` diz ao firmware quantos módulos existem, e é isso que
-    os coordena. Escrever a posição física em `0x0B` parece a coisa certa — é a
-    tentação óbvia para encadear o efeito entre os pentes — mas **trava o
-    segundo módulo numa cor fixa**. Ambos em índice 0, com `NUM_SLOTS` correto.
+11. **Os dois pentes de memória não sincronizam em modo de firmware.** O
+    registrador `0x0B` se chama "índice do pente" e parece ser exatamente o
+    mecanismo para encadear o efeito entre módulos — é a tentação óbvia.
+    Testado com disparo separado e com os dois comandos a 1ms de distância:
+    escrever índice diferente de zero **trava aquele módulo numa cor fixa**,
+    de forma reproduzível. Com ambos em zero os dois animam, mas cada um a
+    partir do próprio relógio. Para memória em fase, use efeito do Lumen.
 12. **`0x11` não é um modo na GPU Gigabyte.** Os valores são bits (`0x01`
     estático, `0x02` respiração, `0x04` piscando, `0x08` piscando duplo, `0x10`
     ciclo). O `0x11` é `0x10 | 0x01`, e o firmware responde **piscando**. Era

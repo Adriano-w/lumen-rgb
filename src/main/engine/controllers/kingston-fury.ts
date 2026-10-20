@@ -866,16 +866,22 @@ class KingstonFuryController implements Controller {
   /**
    * Zera o indice de todos os pentes e diz ao firmware quantos existem.
    *
-   * O que alinha os modulos e o NUM_SLOTS (0x27), nao o indice. Sem ele, cada
-   * pente roda o efeito a partir do proprio relogio — e como as transacoes sao
-   * obrigatoriamente sequenciais (o firmware recusa duas abertas ao mesmo
-   * tempo, com 0x800701B1), eles nunca comecam juntos e ficam defasados para
-   * sempre.
+   * **Nao tente escrever a posicao fisica em 0x0B.** A tentacao e obvia — o
+   * registrador existe, se chama "indice do pente", e encadear o efeito entre
+   * modulos e exatamente o que se quer. Testado nesta maquina, com APPLY
+   * separado e com os dois APPLY a 1ms de distancia: escrever indice diferente
+   * de zero **TRAVA aquele modulo numa cor fixa**. Reproduzivel.
    *
-   * O indice (0x0B) e a posicao fisica do modulo. A tentacao e escrever a
-   * posicao real para encadear o efeito entre os pentes; medido nesta maquina,
-   * isso TRAVA o segundo modulo numa cor fixa. Com ambos em zero e NUM_SLOTS
-   * correto, os dois animam e ficam alinhados — que e o que se quer.
+   * Com ambos em zero, os dois pentes animam. Eles nao ficam em fase um com o
+   * outro — cada controlador parte do proprio relogio, e como as transacoes
+   * sao obrigatoriamente sequenciais (o firmware recusa duas abertas ao mesmo
+   * tempo, com 0x800701B1) nao ha como dispara-los juntos.
+   *
+   * Ou seja: **sincronia entre os pentes nao existe em modo de firmware.**
+   * Quem quiser as memorias em fase — entre si ou com o resto da maquina —
+   * precisa usar um efeito do Lumen, que pinta cada LED a partir de uma origem
+   * de tempo unica. O NUM_SLOTS continua sendo escrito porque informa o
+   * firmware do conjunto; so nao resolve a fase.
    */
   private sendPreamble(): void {
     this.sendBegin();
