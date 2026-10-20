@@ -33,7 +33,7 @@
  *   0x06        leitura: codigo do modelo (0x21/0x23 = Beast DDR4)
  *   0x08        begin/apply
  *   0x09        modo
- *   0x0B        indice do pente (posicao fisica; usamos 0 em todos)
+ *   0x0B        indice do pente — SEMPRE 0. Valor diferente trava o modulo.
  *   0x0C        direcao: 0x01 de baixo para cima, 0x02 de cima para baixo
  *   0x0D        "delay" — parametro por modo, nao e atraso de barramento
  *   0x0E        velocidade
@@ -555,8 +555,6 @@ class KingstonFuryController implements Controller {
   private modeBrightness: number;
   private modeDirection: number;
   private modeColors: RGB[];
-  /** Valor de modo que acreditamos estar no registrador 0x09. */
-  private deviceModeValue: number;
 
   constructor(info: FuryInfo) {
     this.bus = info.bus;
@@ -594,7 +592,6 @@ class KingstonFuryController implements Controller {
 
     const modeIdx = MODES.findIndex((m) => (m.value & 0xff) === info.activeModeValue);
     this.activeMode = modeIdx >= 0 ? modeIdx : DIRECT_MODE_INDEX;
-    this.deviceModeValue = info.activeModeValue;
 
     const mode = MODES[this.activeMode]!;
     this.modeSpeed = mode.speed?.default ?? 0;
@@ -639,12 +636,23 @@ class KingstonFuryController implements Controller {
         ? normalizePalette(mode, options.colors)
         : defaultPaletteFor(mode);
 
-    // O preambulo so e necessario quando o modo muda de verdade: ele zera o
-    // indice de cada pente para que os efeitos nao fiquem fora de fase.
-    const wireValue = mode.value & 0xff;
-    if (wireValue !== this.deviceModeValue) {
-      this.sendPreamble();
-    }
+    // O preambulo roda SEMPRE, mesmo quando o modo pedido ja e o atual.
+    //
+    // A versao anterior o pulava nesse caso, por economia. Parecia seguro e
+    // nao era: o driver nao e o unico que escreve nesses registradores. Um
+    // diagnostico, outra aplicacao, ou uma sessao anterior com configuracao
+    // diferente deixam estado que ele desconhece — e entao "o modo ja e esse,
+    // nao preciso fazer nada" conclui errado.
+    //
+    // Aconteceu de verdade: um indice de pente invalido ficou gravado, travou
+    // o modulo numa cor fixa, e NENHUM restore subsequente corrigiu, porque o
+    // modo nunca mudava e o preambulo nunca rodava. Levou varias rodadas de
+    // diagnostico para achar, justamente porque o sintoma sobrevivia ao que
+    // deveria ser a correcao.
+    //
+    // `setMode` e uma ordem explicita — "coloque este device neste modo". Ela
+    // deve ESTABELECER o estado, nao presumi-lo. Custa duas escritas por pente.
+    this.sendPreamble();
 
     this.applyAll();
   }
@@ -691,7 +699,6 @@ class KingstonFuryController implements Controller {
     this.sendBegin();
 
     this.setRegister(REG.MODE, mode.value & 0xff);
-    this.deviceModeValue = mode.value & 0xff;
 
     /*-------------------------------------------------------------*\
     | Parametros fixos do modo. Varios modos compartilham o mesmo   |
