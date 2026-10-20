@@ -1,0 +1,68 @@
+appId: eu.lumen.app
+productName: Lumen
+copyright: Copyright (c) 2026 Lumen — GPL-2.0-or-later
+
+directories:
+  output: release
+  buildResources: resources
+
+# Somente o bundle gerado pelo electron-vite + os icones entram no asar.
+files:
+  - out/**/*
+  - resources/*.png
+  - resources/*.ico
+  - package.json
+  - '!**/*.map'
+  - '!**/{.vscode,.idea,.git,.github}'
+  - '!**/{tsconfig*.json,electron.vite.config.*,electron-builder.yml}'
+
+# Binarios nativos nao carregam de dentro do asar.
+#
+# `node-hid` traz um `.node` compilado. `koffi` carrega o proprio binario em
+# tempo de execucao procurando por caminho de arquivo — dentro do asar esse
+# caminho nao existe para o carregador do sistema operacional, e a FFI inteira
+# falha. Sem FFI nao ha SMBus nem NVAPI, ou seja: nem placa-mae, nem memoria,
+# nem placa de video.
+asarUnpack:
+  - '**/*.node'
+  - node_modules/koffi/**
+
+# Modulos do PawnIO: o bytecode verificado que da acesso ao SMBus.
+#
+# Nao sao opcionais — sem eles a placa-mae e a memoria nao aparecem. Vem do
+# upstream (github.com/namazso/PawnIO.Modules), assinados, e sao redistribuiveis.
+extraResources:
+  - from: resources/pawnio
+    to: pawnio
+    filter:
+      - '**/*.bin'
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  # O Lumen abre SEM elevacao de proposito: perifericos USB e placa de video
+  # nao precisam dela, e pedir UAC a quem so quer mexer no mouse seria hostil.
+  # Placa-mae e memoria precisam, e a propria interface oferece reabrir
+  # elevado quando ha hardware que depende disso.
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Lumen
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - pt_BR
+    - en_US
+
+# `node-hid` e `koffi` distribuem binarios prontos para Node-API, entao nao ha
+# etapa de compilacao nativa — e por isso que construir o Lumen nao exige MSVC.
+npmRebuild: false
+buildDependenciesFromSource: false

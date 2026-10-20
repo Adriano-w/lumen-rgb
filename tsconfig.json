@@ -1,0 +1,5 @@
+{
+  // Projeto raiz apenas como agregador — os builds reais estao nos dois arquivos referenciados.
+  "files": [],
+  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]
+}

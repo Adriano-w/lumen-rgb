@@ -1,0 +1,24 @@
+{
+  // Build dos scripts de validacao contra hardware real (`npm run probe*`).
+  //
+  // Existe separado porque esses scripts rodam no Node puro, fora do Electron:
+  // precisam de emissao de JS de verdade (o Node nao reescreve especificadores
+  // `.js` para `.ts`, entao strip-types sozinho nao resolve) e a saida vai para
+  // `.probe/`, dentro do projeto, para herdar o `"type": "module"` da raiz.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": ".probe",
+    "rootDir": ".",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts", "src/shared/**/*.ts", "src/main/engine/**/*.ts"]
+}

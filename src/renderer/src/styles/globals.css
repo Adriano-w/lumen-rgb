@@ -1,0 +1,523 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* ------------------------------------------------------------------ *
+ * Tokens de design do Lumen.                                         *
+ *                                                                    *
+ * A identidade e dark-first (e um app de RGB, o escuro e a casa       *
+ * natural dele), mas o tema claro e completo e tem o mesmo cuidado    *
+ * de contraste.                                                      *
+ *                                                                    *
+ * Resolucao de tema, em ordem de prioridade:                         *
+ *   1. [data-theme="dark"] / [data-theme="light"] no <html>           *
+ *   2. prefers-color-scheme, quando nao ha atributo explicito         *
+ * ------------------------------------------------------------------ */
+
+:root {
+  /* --- Superficies --- */
+  --background: oklch(98.8% 0.003 275);
+  --foreground: oklch(21% 0.02 275);
+
+  --surface-1: oklch(100% 0 0);
+  --surface-2: oklch(97% 0.004 275);
+  --surface-3: oklch(94.5% 0.006 275);
+
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(21% 0.02 275);
+
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(21% 0.02 275);
+
+  /* --- Hierarquia de texto --- */
+  --muted: oklch(96% 0.004 275);
+  --muted-foreground: oklch(50% 0.016 275);
+  --subtle-foreground: oklch(62% 0.014 275);
+
+  /* --- Acao primaria: violeta Lumen --- */
+  --primary: oklch(56% 0.215 294);
+  --primary-foreground: oklch(99% 0.004 294);
+  --primary-soft: oklch(95% 0.03 294);
+
+  /* --- Acao secundaria --- */
+  --secondary: oklch(96% 0.006 275);
+  --secondary-foreground: oklch(28% 0.02 275);
+
+  /* --- Realce / hover --- */
+  --accent: oklch(95.5% 0.014 294);
+  --accent-foreground: oklch(30% 0.09 294);
+
+  /* --- Semantica --- */
+  --destructive: oklch(55% 0.21 25);
+  --destructive-foreground: oklch(99% 0.01 25);
+  --warning: oklch(68% 0.15 72);
+  --warning-foreground: oklch(26% 0.07 72);
+  --warning-soft: oklch(96% 0.05 85);
+  --success: oklch(58% 0.14 155);
+  --success-foreground: oklch(99% 0.01 155);
+  --success-soft: oklch(95% 0.05 155);
+  --info: oklch(58% 0.14 240);
+  --info-soft: oklch(96% 0.035 240);
+
+  /* --- Bordas e foco --- */
+  --border: oklch(90% 0.008 275);
+  --border-strong: oklch(83% 0.012 275);
+  --input: oklch(89% 0.01 275);
+  --ring: oklch(56% 0.215 294);
+
+  /* --- Geometria --- */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* --- Elevacao --- */
+  --shadow-soft: 0 1px 2px oklch(21% 0.02 275 / 0.06), 0 4px 12px oklch(21% 0.02 275 / 0.05);
+  --shadow-raised: 0 2px 4px oklch(21% 0.02 275 / 0.07), 0 12px 32px oklch(21% 0.02 275 / 0.08);
+  --shadow-overlay: 0 8px 20px oklch(21% 0.02 275 / 0.12), 0 32px 64px oklch(21% 0.02 275 / 0.14);
+
+  /* --- Cromatica do app (usada por previews e indicadores) --- */
+  --glow: oklch(56% 0.215 294 / 0.35);
+
+  /* --- Layout --- */
+  --sidebar-width: 19rem;
+  --topbar-height: 3.75rem;
+}
+
+/* Tema escuro automatico: so vale quando o usuario nao forcou "light". */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --background: oklch(16% 0.016 278);
+    --foreground: oklch(95% 0.008 278);
+
+    --surface-1: oklch(19.5% 0.018 278);
+    --surface-2: oklch(23% 0.02 278);
+    --surface-3: oklch(27% 0.022 278);
+
+    --card: oklch(19.5% 0.018 278);
+    --card-foreground: oklch(95% 0.008 278);
+
+    --popover: oklch(22% 0.02 278);
+    --popover-foreground: oklch(95% 0.008 278);
+
+    --muted: oklch(24% 0.018 278);
+    --muted-foreground: oklch(70% 0.016 278);
+    --subtle-foreground: oklch(58% 0.016 278);
+
+    --primary: oklch(68% 0.185 293);
+    --primary-foreground: oklch(16% 0.04 293);
+    --primary-soft: oklch(28% 0.07 293);
+
+    --secondary: oklch(25% 0.02 278);
+    --secondary-foreground: oklch(93% 0.01 278);
+
+    --accent: oklch(28% 0.05 293);
+    --accent-foreground: oklch(92% 0.04 293);
+
+    --destructive: oklch(66% 0.19 25);
+    --destructive-foreground: oklch(15% 0.04 25);
+    --warning: oklch(80% 0.15 78);
+    --warning-foreground: oklch(20% 0.05 78);
+    --warning-soft: oklch(27% 0.055 78);
+    --success: oklch(74% 0.15 158);
+    --success-foreground: oklch(16% 0.04 158);
+    --success-soft: oklch(25% 0.05 158);
+    --info: oklch(72% 0.14 240);
+    --info-soft: oklch(25% 0.05 240);
+
+    --border: oklch(28% 0.02 278);
+    --border-strong: oklch(36% 0.024 278);
+    --input: oklch(32% 0.022 278);
+    --ring: oklch(68% 0.185 293);
+
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / 0.4), 0 4px 12px oklch(0% 0 0 / 0.3);
+    --shadow-raised: 0 2px 6px oklch(0% 0 0 / 0.45), 0 14px 36px oklch(0% 0 0 / 0.4);
+    --shadow-overlay: 0 10px 24px oklch(0% 0 0 / 0.5), 0 36px 72px oklch(0% 0 0 / 0.55);
+
+    --glow: oklch(68% 0.185 293 / 0.45);
+  }
+}
+
+/* Tema escuro explicito: vence em qualquer preferencia do sistema. */
+:root[data-theme='dark'] {
+  --background: oklch(16% 0.016 278);
+  --foreground: oklch(95% 0.008 278);
+
+  --surface-1: oklch(19.5% 0.018 278);
+  --surface-2: oklch(23% 0.02 278);
+  --surface-3: oklch(27% 0.022 278);
+
+  --card: oklch(19.5% 0.018 278);
+  --card-foreground: oklch(95% 0.008 278);
+
+  --popover: oklch(22% 0.02 278);
+  --popover-foreground: oklch(95% 0.008 278);
+
+  --muted: oklch(24% 0.018 278);
+  --muted-foreground: oklch(70% 0.016 278);
+  --subtle-foreground: oklch(58% 0.016 278);
+
+  --primary: oklch(68% 0.185 293);
+  --primary-foreground: oklch(16% 0.04 293);
+  --primary-soft: oklch(28% 0.07 293);
+
+  --secondary: oklch(25% 0.02 278);
+  --secondary-foreground: oklch(93% 0.01 278);
+
+  --accent: oklch(28% 0.05 293);
+  --accent-foreground: oklch(92% 0.04 293);
+
+  --destructive: oklch(66% 0.19 25);
+  --destructive-foreground: oklch(15% 0.04 25);
+  --warning: oklch(80% 0.15 78);
+  --warning-foreground: oklch(20% 0.05 78);
+  --warning-soft: oklch(27% 0.055 78);
+  --success: oklch(74% 0.15 158);
+  --success-foreground: oklch(16% 0.04 158);
+  --success-soft: oklch(25% 0.05 158);
+  --info: oklch(72% 0.14 240);
+  --info-soft: oklch(25% 0.05 240);
+
+  --border: oklch(28% 0.02 278);
+  --border-strong: oklch(36% 0.024 278);
+  --input: oklch(32% 0.022 278);
+  --ring: oklch(68% 0.185 293);
+
+  --shadow-soft: 0 1px 2px oklch(0% 0 0 / 0.4), 0 4px 12px oklch(0% 0 0 / 0.3);
+  --shadow-raised: 0 2px 6px oklch(0% 0 0 / 0.45), 0 14px 36px oklch(0% 0 0 / 0.4);
+  --shadow-overlay: 0 10px 24px oklch(0% 0 0 / 0.5), 0 36px 72px oklch(0% 0 0 / 0.55);
+
+  --glow: oklch(68% 0.185 293 / 0.45);
+}
+
+/* ------------------------------------------------------------------ *
+ * Ponte dos tokens para as utilidades do Tailwind v4.                *
+ * `inline` faz as utilidades referenciarem as vars, nao copia-las,   *
+ * o que e o que permite trocar de tema sem recompilar classes.       *
+ * ------------------------------------------------------------------ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
+
+  --font-sans:
+    'Inter var', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+
+  /* Animacoes dos previews de efeito, uma por comportamento do motor. */
+  --animate-lumen-breathe: lumen-breathe 3.2s ease-in-out infinite;
+  --animate-lumen-strobe: lumen-strobe 0.55s steps(1, end) infinite;
+  --animate-lumen-slide: lumen-slide 2.4s linear infinite;
+  --animate-lumen-hue: lumen-hue 4s linear infinite;
+  --animate-lumen-travel: lumen-travel 2.1s linear infinite;
+  --animate-lumen-scan: lumen-scan 1.1s ease-in-out infinite alternate;
+  --animate-lumen-march: lumen-march 1.4s linear infinite;
+  --animate-lumen-flicker: lumen-flicker 0.8s ease-in-out infinite;
+  --animate-lumen-swap: lumen-swap 1.2s steps(1, end) infinite;
+  --animate-lumen-twinkle: lumen-twinkle 1.8s ease-out infinite;
+  --animate-lumen-pulse: lumen-pulse 1.8s ease-in-out infinite;
+  --animate-lumen-level: lumen-level 1.1s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------------------ *
+ * Base                                                               *
+ * ------------------------------------------------------------------ */
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings:
+      'cv11' 1,
+      'ss01' 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* App de desktop: sem selecao acidental de texto da chrome. */
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* Texto que o usuario realmente pode querer copiar. */
+  input,
+  textarea,
+  [data-selectable] {
+    user-select: text;
+  }
+
+  /* Foco visivel de verdade, em ambos os temas. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+    background-clip: content-box;
+  }
+
+  /* Respeita quem pediu menos movimento — inclusive nos previews. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilidades do Lumen                                                *
+ * ------------------------------------------------------------------ */
+
+@utility glow-primary {
+  box-shadow: 0 0 0 1px var(--primary-soft), 0 0 24px var(--glow);
+}
+
+/* Faixa quadriculada atras de swatches, para cor escura nao virar buraco. */
+@utility checkerboard {
+  background-image:
+    linear-gradient(45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--surface-3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--surface-3) 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Keyframes dos previews de efeito                                   *
+ * ------------------------------------------------------------------ */
+
+/* Respiracao: sobe, desce e PAUSA no escuro — como o kernel faz. */
+@keyframes lumen-breathe {
+  0%,
+  14% {
+    opacity: 0.05;
+  }
+  50% {
+    opacity: 1;
+  }
+  86%,
+  100% {
+    opacity: 0.05;
+  }
+}
+
+/* Strobe: liga/desliga sem transicao, ~35% de ciclo aceso. */
+@keyframes lumen-strobe {
+  0%,
+  34% {
+    opacity: 1;
+  }
+  35%,
+  100% {
+    opacity: 0.04;
+  }
+}
+
+@keyframes lumen-slide {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+
+/* Onda e cometa: um pulso que atravessa a fita e reaparece do outro lado. */
+@keyframes lumen-travel {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Varredura: vai e volta (usa `alternate`), nao da a volta. */
+@keyframes lumen-scan {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+/* Marcha: os pontos avancam exatamente um periodo do padrao. */
+@keyframes lumen-march {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 3rem 0;
+  }
+}
+
+/* Chama: tremulacao irregular, sem periodo obvio. */
+@keyframes lumen-flicker {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scaleY(0.88);
+  }
+  25% {
+    opacity: 1;
+    transform: scaleY(1.08);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scaleY(0.82);
+  }
+  75% {
+    opacity: 0.95;
+    transform: scaleY(1.02);
+  }
+}
+
+/* Alternado: as duas camadas trocam de lugar de uma vez. */
+@keyframes lumen-swap {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Cintilancia: cada ponto tem seu proprio relogio (delay/duration no JSX). */
+@keyframes lumen-twinkle {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lumen-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes lumen-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lumen-level {
+  0%,
+  100% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Ajustes no color picker do @uiw/react-color                        *
+ * ------------------------------------------------------------------ */
+
+.w-color-wheel {
+  box-shadow: var(--shadow-soft);
+  border-radius: 9999px;
+}

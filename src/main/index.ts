@@ -1,0 +1,251 @@
+/**
+ * Bootstrap do processo principal do Lumen.
+ *
+ * Ordem: log -> instancia unica -> motor -> IPC -> bandeja -> janela.
+ * O app sobrevive a uma falha do motor: a UI abre e o status explica o erro.
+ */
+import { app } from 'electron';
+import type { Assignment, Device, Diagnostics, EngineStatus, Profile, TargetRef } from '../shared/types.js';
+import type { Engine, EngineEvents } from './engine/engine.js';
+import { createEngine } from './engine/index.js';
+import { isElevated } from './elevation.js';
+import { registerIpc } from './ipc.js';
+import { createScopedLogger, initLogger } from './logger.js';
+import { getProfile, getSettings } from './store.js';
+import { createTray, type TrayController } from './tray.js';
+import { createWindow, isQuitting, setQuitting, showWindow } from './window.js';
+
+initLogger();
+const log = createScopedLogger('main');
+
+/* ------------------------------------------------------------------ *
+ * Motor de reserva                                                   *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Motor inerte usado quando `createEngine()` falha.
+ * Mantem o contrato de IPC vivo para a UI poder mostrar o erro em vez de
+ * abrir uma janela em branco.
+ */
+function createDeadEngine(reason: string): Engine {
+  const status: EngineStatus = {
+    state: 'error',
+    reason,
+    hint: 'Reinicie o Lumen. Se persistir, verifique os logs em %APPDATA%/lumen/logs.',
+  };
+  const fail = (): Promise<never> => Promise.reject(new Error(reason));
+
+  return {
+    start: () => Promise.resolve(),
+    stop: () => Promise.resolve(),
+    getStatus: () => status,
+    getDiagnostics: (): Promise<Diagnostics> =>
+      Promise.resolve({
+        pawnIoInstalled: false,
+        backendElevated: false,
+        conflictingProcesses: [],
+        failedInterfaces: [],
+      }),
+    listDevices: (): Device[] => [],
+    rescan: (): Promise<Device[]> => Promise.resolve([]),
+    apply: (_target: TargetRef, _assignment: Assignment) => fail(),
+    applyAll: (_assignment: Assignment) => fail(),
+    resizeZone: (_deviceId: string, _zoneIndex: number, _ledsCount: number) => fail(),
+    applyProfile: (_profile: Profile) => fail(),
+    on: <K extends keyof EngineEvents>(_event: K, _listener: EngineEvents[K]) => () => {},
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Estado do processo                                                 *
+ * ------------------------------------------------------------------ */
+
+let engine: Engine | null = null;
+let tray: TrayController | null = null;
+let disposeIpc: (() => void) | null = null;
+
+/** `--hidden` (atalho de inicializacao do Windows) ou preferencia salva. */
+function shouldStartHidden(): boolean {
+  const hasFlag = process.argv.includes('--hidden') || process.argv.includes('--start-minimized');
+  return hasFlag || getSettings().startMinimized;
+}
+
+/** Sincroniza o item de inicializacao do Windows com as preferencias. */
+function syncLoginItem(): void {
+  const { launchOnLogin } = getSettings();
+  try {
+    app.setLoginItemSettings({ openAtLogin: launchOnLogin, args: ['--hidden'] });
+  } catch (error) {
+    log.warn('Nao foi possivel atualizar a inicializacao automatica.', error);
+  }
+}
+
+/** Aplica o perfil de boot, se houver. Falha aqui nunca impede o app de subir. */
+async function applyBootProfile(activeEngine: Engine): Promise<void> {
+  const { bootProfileId } = getSettings();
+  if (!bootProfileId) return;
+
+  const profile = getProfile(bootProfileId);
+  if (!profile) {
+    log.warn(`Perfil de boot "${bootProfileId}" nao foi encontrado.`);
+    return;
+  }
+
+  try {
+    await activeEngine.applyProfile(profile);
+    tray?.setActiveProfile(profile.id);
+    log.info(`Perfil de boot aplicado: ${profile.name}`);
+  } catch (error) {
+    log.error(`Falha ao aplicar o perfil de boot "${profile.name}".`, error);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Instancia unica                                                    *
+ * ------------------------------------------------------------------ */
+
+if (!app.requestSingleInstanceLock()) {
+  log.info('Outra instancia do Lumen ja esta em execucao; encerrando esta.');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    log.info('Segunda instancia detectada; trazendo a janela para frente.');
+    showWindow();
+  });
+
+  // Identificador usado pelo Windows para agrupar notificacoes e a barra de tarefas.
+  app.setAppUserModelId('eu.lumen.app');
+
+  void bootstrap();
+}
+
+/* ------------------------------------------------------------------ *
+ * Bootstrap                                                          *
+ * ------------------------------------------------------------------ */
+
+async function bootstrap(): Promise<void> {
+  await app.whenReady();
+
+  syncLoginItem();
+
+  // 1. Motor. Se a fabrica explodir, seguimos com o motor inerte.
+  let activeEngine: Engine;
+  try {
+    const settings = getSettings();
+    log.info(
+      isElevated()
+        ? 'Rodando com privilegio: placa-mae e memoria acessiveis.'
+        : 'Rodando sem privilegio: apenas perifericos USB e GPU. A UI oferece reiniciar como administrador.',
+    );
+    activeEngine = await createEngine({
+      effectFps: settings.effectFps,
+      stopConflictingSoftware: settings.stopConflictingSoftware,
+      disableConflictingAutostart: settings.stopConflictingSoftware,
+      log: {
+        info: (msg) => log.info(msg),
+        warn: (msg) => log.warn(msg),
+        error: (msg) => log.error(msg),
+      },
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    log.error('createEngine() falhou; subindo em modo degradado.', error);
+    activeEngine = createDeadEngine(`O motor nao pudo ser inicializado: ${reason}`);
+  }
+  engine = activeEngine;
+
+  // 2. IPC e bandeja antes da janela — o renderer ja encontra tudo pronto.
+  disposeIpc = registerIpc({
+    engine: activeEngine,
+    onSettingsChanged: () => {
+      syncLoginItem();
+      tray?.refresh();
+    },
+    onProfilesChanged: () => {
+      tray?.refresh();
+    },
+  });
+
+  try {
+    tray = createTray({
+      engine: activeEngine,
+      onSettingsChanged: () => {
+        syncLoginItem();
+      },
+    });
+  } catch (error) {
+    log.error('Nao foi possivel criar o icone de bandeja.', error);
+  }
+
+  // 3. Janela. Com `--hidden` ela e criada mas nunca mostrada.
+  const startHidden = shouldStartHidden();
+  log.info(startHidden ? 'Iniciando minimizado na bandeja.' : 'Iniciando com a janela visivel.');
+  createWindow({ startHidden });
+
+  app.on('activate', () => {
+    showWindow();
+  });
+
+  // 4. Conexao com o hardware. Nunca derruba o processo.
+  try {
+    await activeEngine.start();
+    log.info('Motor iniciado.', activeEngine.getStatus());
+  } catch (error) {
+    log.error('engine.start() rejeitou; o status refletira a falha.', error);
+  }
+
+  await applyBootProfile(activeEngine);
+}
+
+/* ------------------------------------------------------------------ *
+ * Encerramento                                                       *
+ * ------------------------------------------------------------------ */
+
+// App de bandeja: fechar a ultima janela nao encerra o processo.
+app.on('window-all-closed', () => {
+  if (!isQuitting()) return;
+  app.quit();
+});
+
+let shuttingDown = false;
+
+app.on('before-quit', (event) => {
+  setQuitting(true);
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  // Dar ao motor a chance de apagar os efeitos e fechar o backend.
+  event.preventDefault();
+  void shutdown();
+});
+
+async function shutdown(): Promise<void> {
+  try {
+    disposeIpc?.();
+  } catch (error) {
+    log.warn('Falha ao desregistrar o IPC.', error);
+  }
+
+  try {
+    await engine?.stop();
+  } catch (error) {
+    log.error('Falha ao parar o motor.', error);
+  }
+
+  try {
+    tray?.destroy();
+  } catch {
+    // Irrelevante durante o encerramento.
+  }
+
+  log.info('--- Lumen encerrado ---');
+  app.exit(0);
+}
+
+process.on('uncaughtException', (error) => {
+  log.error('Excecao nao tratada no processo principal.', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  log.error('Promise rejeitada sem tratamento no processo principal.', reason);
+});

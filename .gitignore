@@ -1,0 +1,44 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Saida de build
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache de ferramentas
+.vite/
+.cache/
+.eslintcache
+
+# Backend OpenRGB empacotado (baixado, nao versionado)
+resources/openrgb/
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Sistema operacional
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# saida dos scripts de validacao
+.probe/
