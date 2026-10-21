@@ -104,11 +104,36 @@ async function applyBootProfile(activeEngine: Engine): Promise<void> {
  * Instancia unica                                                    *
  * ------------------------------------------------------------------ */
 
-if (!app.requestSingleInstanceLock()) {
-  log.info('Outra instancia do Lumen ja esta em execucao; encerrando esta.');
-  app.quit();
-} else {
-  app.on('second-instance', () => {
+/**
+ * Instancia unica, mas com uma excecao: **privilegio ganha de antiguidade**.
+ *
+ * Instancia unica pura tem um efeito perverso aqui. O Lumen abre sem elevacao
+ * de proposito, e so enxerga placa-mae e memoria quando elevado. Se o usuario
+ * tem o app aberto sem privilegio e reabre como administrador — exatamente o
+ * que a propria interface sugere fazer — a instancia nova encontra o bloqueio,
+ * traz a janela velha para frente e encerra. A janela volta ao foco, nada
+ * muda, e o usuario conclui, com razao, que "abrir como admin nao funciona".
+ *
+ * A instancia elevada consegue estritamente mais que a comum. Entao ela nao
+ * cede: avisa a antiga para sair e assume o lugar.
+ */
+/** Tentativas de reassumir o bloqueio depois de pedir a saida da outra. */
+const TAKEOVER_ATTEMPTS = 20;
+const TAKEOVER_INTERVAL_MS = 250;
+
+function startApp(): void {
+  app.on('second-instance', (_event, _argv, _cwd, additionalData) => {
+    const data = additionalData as { takeover?: boolean } | undefined;
+
+    // Chegou uma instancia elevada e esta aqui nao e: ela faz mais do que nos.
+    // Saimos para liberar o barramento e o bloqueio.
+    if (data?.takeover === true && !isElevated()) {
+      log.info('Instancia elevada chegou; cedendo o lugar e encerrando esta.');
+      setQuitting(true);
+      void shutdown().finally(() => app.exit(0));
+      return;
+    }
+
     log.info('Segunda instancia detectada; trazendo a janela para frente.');
     showWindow();
   });
@@ -117,6 +142,37 @@ if (!app.requestSingleInstanceLock()) {
   app.setAppUserModelId('eu.lumen.app');
 
   void bootstrap();
+}
+
+/** Espera a outra instancia sair e tenta reassumir o bloqueio. */
+function waitForLock(attempt = 0): void {
+  if (app.requestSingleInstanceLock({ takeover: true })) {
+    log.info(`Bloqueio assumido na tentativa ${attempt + 1}; seguindo elevado.`);
+    startApp();
+    return;
+  }
+
+  if (attempt + 1 >= TAKEOVER_ATTEMPTS) {
+    log.error(
+      'A instancia anterior nao encerrou a tempo. Feche o Lumen pela bandeja e abra de novo como administrador.',
+    );
+    app.exit(1);
+    return;
+  }
+
+  setTimeout(() => waitForLock(attempt + 1), TAKEOVER_INTERVAL_MS);
+}
+
+if (app.requestSingleInstanceLock({ takeover: isElevated() })) {
+  startApp();
+} else if (isElevated()) {
+  // O pedido acima ja entregou `takeover: true` a instancia em execucao, que
+  // vai encerrar. Resta esperar o bloqueio ficar livre.
+  log.info('Ha uma instancia sem privilegio em execucao; assumindo o lugar dela.');
+  waitForLock();
+} else {
+  log.info('Outra instancia do Lumen ja esta em execucao; encerrando esta.');
+  app.quit();
 }
 
 /* ------------------------------------------------------------------ *
