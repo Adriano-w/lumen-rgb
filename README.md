@@ -73,6 +73,26 @@ cru. É um **driver**, não um aplicativo — nada dele disputa o barramento.
 Os módulos `.bin` em `resources/pawnio/` vêm do
 [PawnIO.Modules](https://github.com/namazso/PawnIO.Modules) upstream, assinados.
 
+## Iniciar com o Windows, já elevado
+
+Ligue **"Iniciar com o Windows"** nas configurações. Na primeira vez o Windows
+pede permissão uma única vez; de lá em diante o Lumen sobe no logon **já com
+privilégio**, sem prompt nenhum — com placa-mãe e memória disponíveis desde o
+primeiro segundo.
+
+Isso usa uma **tarefa agendada com privilégio máximo**, não a chave `Run` comum.
+A diferença importa: a chave `Run` inicia o app sem elevação, e marcar o
+executável como "sempre executar como administrador" faria o Windows pedir UAC a
+cada boot. O agendador é um serviço que já roda elevado, então ele inicia o
+processo com privilégio e sem perguntar. É o mesmo mecanismo que o utilitário da
+ASRock usa.
+
+Se você recusar o pedido de permissão, o Lumen cai para a inicialização comum e
+**avisa**: ele ainda abre sozinho, mas sem placa-mãe nem memória até você
+reabrir como administrador.
+
+Para remover: desligue a opção, ou `schtasks /Delete /TN Lumen /F`.
+
 ## Privilégio
 
 O Lumen abre **sem elevação** e controla o que der: periféricos USB e GPU não

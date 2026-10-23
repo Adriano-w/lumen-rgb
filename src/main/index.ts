@@ -15,6 +15,7 @@ import type {
 } from '../shared/types.js';
 import type { Engine, EngineEvents } from './engine/engine.js';
 import { createEngine } from './engine/index.js';
+import { applyAutostart, currentMode, refreshTaskTargetIfNeeded } from './autostart.js';
 import { isElevated } from './elevation.js';
 import { registerIpc } from './ipc.js';
 import { createScopedLogger, initLogger } from './logger.js';
@@ -78,11 +79,30 @@ function shouldStartHidden(): boolean {
   return hasFlag || getSettings().startMinimized;
 }
 
-/** Sincroniza o item de inicializacao do Windows com as preferencias. */
-function syncLoginItem(): void {
+/**
+ * Sincroniza a inicializacao automatica com a preferencia salva.
+ *
+ * So age quando o estado real diverge do pedido. Reaplicar a cada boot pediria
+ * UAC sem motivo, ja que criar a tarefa agendada exige elevacao.
+ */
+async function syncLoginItem(): Promise<void> {
   const { launchOnLogin } = getSettings();
+
   try {
-    app.setLoginItemSettings({ openAtLogin: launchOnLogin, args: ['--hidden'] });
+    const mode = await currentMode();
+
+    if (launchOnLogin && mode === 'elevated') {
+      // Ja esta como queremos. So confere se o caminho do executavel ainda
+      // bate — depois de uma atualizacao ele pode ter mudado, e uma tarefa
+      // apontando para um binario que nao existe falha calada no logon.
+      await refreshTaskTargetIfNeeded();
+      return;
+    }
+    if (!launchOnLogin && mode === 'disabled') return;
+
+    const state = await applyAutostart(launchOnLogin);
+    log.info(`Inicializacao automatica: ${state.mode}`);
+    if (state.detail) log.warn(state.detail);
   } catch (error) {
     log.warn('Nao foi possivel atualizar a inicializacao automatica.', error);
   }
@@ -190,7 +210,7 @@ if (app.requestSingleInstanceLock({ takeover: isElevated() })) {
 async function bootstrap(): Promise<void> {
   await app.whenReady();
 
-  syncLoginItem();
+  void syncLoginItem();
 
   // 1. Motor. Se a fabrica explodir, seguimos com o motor inerte.
   let activeEngine: Engine;
@@ -222,7 +242,7 @@ async function bootstrap(): Promise<void> {
   disposeIpc = registerIpc({
     engine: activeEngine,
     onSettingsChanged: () => {
-      syncLoginItem();
+      void syncLoginItem();
       tray?.refresh();
     },
     onProfilesChanged: () => {
@@ -234,7 +254,7 @@ async function bootstrap(): Promise<void> {
     tray = createTray({
       engine: activeEngine,
       onSettingsChanged: () => {
-        syncLoginItem();
+        void syncLoginItem();
       },
     });
   } catch (error) {
