@@ -411,6 +411,12 @@ export interface Diagnostics {
  * Contrato de IPC (renderer -> main)                                 *
  * ------------------------------------------------------------------ */
 
+/** O que deu certo e o que nao deu, numa aplicacao em lote. */
+export interface ApplyManyResult {
+  applied: string[];
+  failed: Array<{ deviceId: string; error: string }>;
+}
+
 export interface LumenApi {
   getStatus(): Promise<EngineStatus>;
   getDiagnostics(): Promise<Diagnostics>;
@@ -421,6 +427,18 @@ export interface LumenApi {
   apply(target: TargetRef, assignment: Assignment): Promise<void>;
   /** Pinta todos os devices com uma unica cor — o botao de panico. */
   applyAll(assignment: Assignment): Promise<void>;
+  /**
+   * Aplica a um subconjunto de devices, numa unica ida ao backend.
+   *
+   * Nao e so economia de chamadas. O motor usa a lista para montar uma **fita
+   * virtual**: os devices entram em sequencia e um efeito espacial atravessa
+   * todos como se fossem uma fita so. Aplicando um por vez, cada device
+   * recomeca o efeito do zero — e o resultado nao parece um efeito unico,
+   * parece cada device fazendo uma coisa diferente.
+   *
+   * A ordem importa: e a ordem fisica que o efeito vai percorrer.
+   */
+  applyMany(deviceIds: readonly string[], assignment: Assignment): Promise<ApplyManyResult>;
   /** Redimensiona uma zona de tamanho configuravel (header ARGB). */
   resizeZone(deviceId: string, zoneIndex: number, ledsCount: number): Promise<void>;
 

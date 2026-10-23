@@ -5,7 +5,14 @@
  * O app sobrevive a uma falha do motor: a UI abre e o status explica o erro.
  */
 import { app } from 'electron';
-import type { Assignment, Device, Diagnostics, EngineStatus, Profile, TargetRef } from '../shared/types.js';
+import type {
+  Assignment,
+  Device,
+  Diagnostics,
+  EngineStatus,
+  Profile,
+  TargetRef,
+} from '../shared/types.js';
 import type { Engine, EngineEvents } from './engine/engine.js';
 import { createEngine } from './engine/index.js';
 import { isElevated } from './elevation.js';
@@ -50,6 +57,7 @@ function createDeadEngine(reason: string): Engine {
     rescan: (): Promise<Device[]> => Promise.resolve([]),
     apply: (_target: TargetRef, _assignment: Assignment) => fail(),
     applyAll: (_assignment: Assignment) => fail(),
+    applyMany: (_deviceIds: readonly string[], _assignment: Assignment) => fail(),
     resizeZone: (_deviceId: string, _zoneIndex: number, _ledsCount: number) => fail(),
     applyProfile: (_profile: Profile) => fail(),
     on: <K extends keyof EngineEvents>(_event: K, _listener: EngineEvents[K]) => () => {},

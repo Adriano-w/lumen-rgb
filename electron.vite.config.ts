@@ -34,8 +34,20 @@ export default defineConfig({
       minify: false,
       sourcemap: true,
       rollupOptions: {
-        // O campo `main` do package.json aponta para `./out/main/index.mjs`.
-        input: { index: resolvePath('./src/main/index.ts') },
+        // Duas entradas. `index` e o processo principal (o campo `main` do
+        // package.json aponta para `./out/main/index.mjs`).
+        //
+        // `hal-worker` e um worker thread separado, e precisa ser entrada
+        // propria porque e carregado por caminho em tempo de execucao, nao
+        // por `import` — o bundler nao teria como descobri-lo sozinho.
+        //
+        // Ele existe porque falar com o hardware e sincrono e lento: pintar
+        // todos os devices de um quadro leva centenas de milissegundos, e na
+        // thread principal isso congela a interface.
+        input: {
+          index: resolvePath('./src/main/index.ts'),
+          'hal-worker': resolvePath('./src/main/engine/worker/hal-worker.ts'),
+        },
         external: externalPatterns,
         output: {
           format: 'es',

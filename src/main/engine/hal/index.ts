@@ -54,6 +54,12 @@ function electronApp(): { isPackaged?: boolean; getAppPath?: () => string } | nu
 
 /** Onde moram os modulos `.bin` do PawnIO, em dev, empacotado e em script. */
 export function pawnIoModuleDir(): string {
+  // Dentro do worker de hardware nao ha `app` do Electron, e `resourcesPath`
+  // nao e confiavel. O processo principal, que conhece os dois, repassa o
+  // caminho ja resolvido.
+  const fromWorker = process.env['LUMEN_PAWNIO_DIR'];
+  if (fromWorker) return fromWorker;
+
   const app = electronApp();
 
   // `resourcesPath` so existe sob Electron; fora dele o campo nem aparece.

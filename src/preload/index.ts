@@ -9,6 +9,7 @@
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type {
+  ApplyManyResult,
   Assignment,
   Device,
   Diagnostics,
@@ -26,6 +27,7 @@ const CHANNEL = {
   rescan: 'lumen:rescan',
   apply: 'lumen:apply',
   applyAll: 'lumen:applyAll',
+  applyMany: 'lumen:applyMany',
   resizeZone: 'lumen:resizeZone',
   listProfiles: 'lumen:listProfiles',
   saveProfile: 'lumen:saveProfile',
@@ -65,6 +67,9 @@ const api: LumenApi = {
 
   applyAll: (assignment: Assignment): Promise<void> =>
     ipcRenderer.invoke(CHANNEL.applyAll, assignment) as Promise<void>,
+
+  applyMany: (deviceIds: readonly string[], assignment: Assignment): Promise<ApplyManyResult> =>
+    ipcRenderer.invoke(CHANNEL.applyMany, deviceIds, assignment) as Promise<ApplyManyResult>,
 
   resizeZone: (deviceId: string, zoneIndex: number, ledsCount: number): Promise<void> =>
     ipcRenderer.invoke(CHANNEL.resizeZone, deviceId, zoneIndex, ledsCount) as Promise<void>,

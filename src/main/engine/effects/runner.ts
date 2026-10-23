@@ -41,6 +41,21 @@ export interface TargetDescriptor {
    * agressiva — cada frame custa um ciclo de escrita de um orcamento finito.
    */
   writeWearRisk?: boolean;
+  /**
+   * Posicao deste alvo dentro de uma fita virtual que atravessa TODOS os
+   * devices.
+   *
+   * Sem isso, um efeito espacial trata cada device como uma fita isolada: o
+   * arco-iris recomeca do zero na placa-mae, de novo na memoria, de novo no
+   * mouse. Cada um tem contagem e layout fisico diferentes, entao o resultado
+   * nao parece um efeito so — parece cada device fazendo uma coisa.
+   *
+   * Com o deslocamento, o LED 0 da memoria continua de onde o ultimo LED da
+   * placa parou, e o efeito atravessa a maquina inteira.
+   */
+  spanOffset?: number;
+  /** Total de LEDs da fita virtual. */
+  spanTotal?: number;
 }
 
 interface ActiveTarget extends TargetDescriptor {
@@ -253,7 +268,16 @@ export class EffectRunner {
 
       let colors: RGB[];
       try {
-        colors = renderTarget(target.effect.kind, target.effect.params, target.ledCount, t, target.buffer);
+        colors = renderTarget(
+          target.effect.kind,
+          target.effect.params,
+          target.ledCount,
+          t,
+          target.buffer,
+          target.spanTotal !== undefined && target.spanOffset !== undefined
+            ? { offset: target.spanOffset, total: target.spanTotal }
+            : undefined,
+        );
       } catch (err) {
         // Kernel indisponivel: nao ha como recuperar reintentando.
         this.targets.delete(target.key);

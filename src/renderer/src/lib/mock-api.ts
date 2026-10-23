@@ -587,6 +587,25 @@ export function createMockApi(): LumenApi {
       }
     },
 
+    async applyMany(deviceIds, assignment) {
+      await delay(60);
+      const applied: string[] = [];
+      const failed: Array<{ deviceId: string; error: string }> = [];
+
+      // Sequencial e tolerante a falha, igual ao backend real: um device
+      // problematico nao pode impedir os outros de receberem o efeito.
+      for (const deviceId of deviceIds) {
+        try {
+          paint({ deviceId }, assignment);
+          applied.push(deviceId);
+        } catch (err) {
+          failed.push({ deviceId, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+
+      return { applied, failed };
+    },
+
     async resizeZone(deviceId, zoneIndex, ledsCount) {
       await delay(120);
       devices = devices.map((device) => {

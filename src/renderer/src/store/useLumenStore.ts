@@ -321,23 +321,42 @@ export const useLumenStore = create<LumenState>()((set, get) => {
       const applied: string[] = [];
       const failed: BulkFailure[] = [];
 
-      // Sequencial de proposito. Boa parte destes devices escreve por
-      // SMBus, que e um barramento compartilhado e de uma transacao por
-      // vez: disparar tudo junto com `Promise.all` faz os comandos se
-      // atropelarem e voltarem como erro ou cor errada. Devagar e certo.
-      for (const [index, deviceId] of deviceIds.entries()) {
-        set({ bulkProgress: { total: deviceIds.length, done: index, currentName: nameOf(deviceId) } });
+      // UMA chamada com a lista inteira, nao uma por device.
+      //
+      // Nao e so economia de ida e volta. O motor usa a lista para montar uma
+      // fita virtual: os devices entram em sequencia e um efeito espacial
+      // atravessa todos como se fossem uma fita so. Aplicando um por vez,
+      // cada device recomecava o efeito do zero — todos acendendo a mesma
+      // primeira cor e divergindo a partir dali, que e o oposto de
+      // sincronizado.
+      //
+      // O backend serializa as escritas internamente, porque o SMBus aceita
+      // uma transacao por vez.
+      try {
+        const result = await api.applyMany(deviceIds, assignment);
 
-        try {
-          await api.apply({ deviceId }, assignment);
+        for (const deviceId of result.applied) {
           applied.push(nameOf(deviceId));
           set((state) => ({
             assignments: { ...state.assignments, [targetKey(deviceId, undefined)]: assignment },
           }));
-        } catch (error) {
-          // Um device que falha nao interrompe os outros: a tela devolve
-          // a lista exata de quem ficou de fora, e por que.
-          failed.push({ deviceId, name: nameOf(deviceId), reason: describeError(error) });
+        }
+
+        // Um device que falha nao impede os outros: a tela devolve a lista
+        // exata de quem ficou de fora, e por que.
+        for (const entry of result.failed) {
+          failed.push({
+            deviceId: entry.deviceId,
+            name: nameOf(entry.deviceId),
+            reason: entry.error,
+          });
+        }
+      } catch (error) {
+        // Falha da chamada inteira (backend fora do ar, validacao): todos os
+        // devices ficaram de fora, pelo mesmo motivo.
+        const reason = describeError(error);
+        for (const deviceId of deviceIds) {
+          failed.push({ deviceId, name: nameOf(deviceId), reason });
         }
       }
 

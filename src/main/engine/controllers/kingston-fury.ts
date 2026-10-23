@@ -65,6 +65,7 @@ import type {
   SetModeOptions,
   SmbusBus,
 } from '../hal/types.js';
+import { sleepSync } from '../hal/timing.js';
 
 /* ------------------------------------------------------------------ *
  * Protocolo                                                          *
@@ -468,14 +469,6 @@ const FIREWORK_SPEED_OFFSETS = [15, 0, 19, 4] as const;
  * Utilitarios                                                        *
  * ------------------------------------------------------------------ */
 
-const SLEEP_SLOT = new Int32Array(new SharedArrayBuffer(4));
-
-/** Pausa sincrona sem queimar CPU; a interface `Controller` e sincrona. */
-function sleepSync(ms: number): void {
-  if (ms <= 0) return;
-  Atomics.wait(SLEEP_SLOT, 0, 0, ms);
-}
-
 function toByte(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value) & 0xff;
@@ -833,23 +826,32 @@ class KingstonFuryController implements Controller {
    * registrador em sequencia e pagamos UMA pausa de 10 ms para os dois, em vez
    * de uma por pente. Ordem R, B, G e a do OpenRGB — preservada de proposito.
    */
+  /**
+   * Escreve as cores por LED.
+   *
+   * As 30 escritas (10 LEDs x 3 canais) sao UM grupo, com uma pausa so no
+   * fim. A versao anterior pausava apos cada registrador: com a granularidade
+   * do temporizador do Windows, os 10ms pedidos viravam ~15,6 reais, e 30
+   * deles custavam ~470ms — medido. Um quadro da memoria saia por 536ms, mais
+   * caro que a placa-mae com 103 LEDs.
+   *
+   * O firmware pede respiro entre GRUPOS de escrita, nao entre registradores;
+   * a transacao aberta (begin/apply) ja o protege de ler estado parcial.
+   */
   private writeLedColors(): void {
-    for (let ledIdx = 0; ledIdx < LEDS_PER_DIMM; ledIdx++) {
-      const reds: number[] = [];
-      const greens: number[] = [];
-      const blues: number[] = [];
+    let wrote = false;
 
+    for (let ledIdx = 0; ledIdx < LEDS_PER_DIMM; ledIdx++) {
       for (let slotIdx = 0; slotIdx < this.slots.length; slotIdx++) {
         const color = this.ledColors[slotIdx * LEDS_PER_DIMM + ledIdx] ?? { r: 0, g: 0, b: 0 };
-        reds.push(toByte(color.r));
-        greens.push(toByte(color.g));
-        blues.push(toByte(color.b));
+        // Ordem R, B, G — e a que o firmware espera, nao engano.
+        wrote = this.cachedWrite(slotIdx, REG.BASE_RED + ledIdx * 3, toByte(color.r)) || wrote;
+        wrote = this.cachedWrite(slotIdx, REG.BASE_BLUE + ledIdx * 3, toByte(color.b)) || wrote;
+        wrote = this.cachedWrite(slotIdx, REG.BASE_GREEN + ledIdx * 3, toByte(color.g)) || wrote;
       }
-
-      this.setRegisterPerSlot(REG.BASE_RED + ledIdx * 3, reds);
-      this.setRegisterPerSlot(REG.BASE_BLUE + ledIdx * 3, blues);
-      this.setRegisterPerSlot(REG.BASE_GREEN + ledIdx * 3, greens);
     }
+
+    if (wrote) sleepSync(FURY_DELAY_MS);
   }
 
   /* ---------------------------------------------------------------- *

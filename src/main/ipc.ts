@@ -7,6 +7,7 @@
  */
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type {
+  ApplyManyResult,
   Device,
   Diagnostics,
   EngineStatus,
@@ -40,6 +41,7 @@ export const IPC = {
   rescan: 'lumen:rescan',
   apply: 'lumen:apply',
   applyAll: 'lumen:applyAll',
+  applyMany: 'lumen:applyMany',
   resizeZone: 'lumen:resizeZone',
   listProfiles: 'lumen:listProfiles',
   saveProfile: 'lumen:saveProfile',
@@ -150,6 +152,21 @@ export function registerIpc(options: RegisterIpcOptions): () => void {
     const assignment = sanitizeAssignment(rawAssignment);
     if (!assignment) throw new IpcValidationError(IPC.applyAll, 'atribuicao (Assignment) invalida.');
     await engine.applyAll(assignment);
+  });
+
+  handle<ApplyManyResult>(IPC.applyMany, async (_event, rawDeviceIds, rawAssignment) => {
+    if (!Array.isArray(rawDeviceIds)) {
+      throw new IpcValidationError(IPC.applyMany, 'deviceIds precisa ser uma lista.');
+    }
+    // A ORDEM e significativa: e a sequencia que o efeito espacial percorre.
+    const deviceIds = rawDeviceIds.map((id, i) =>
+      requireString(IPC.applyMany, id, `deviceIds[${i}]`),
+    );
+
+    const assignment = sanitizeAssignment(rawAssignment);
+    if (!assignment) throw new IpcValidationError(IPC.applyMany, 'atribuicao (Assignment) invalida.');
+
+    return engine.applyMany(deviceIds, assignment);
   });
 
   handle<void>(IPC.resizeZone, async (_event, rawDeviceId, rawZoneIndex, rawLedsCount) => {

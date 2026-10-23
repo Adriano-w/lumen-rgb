@@ -58,6 +58,7 @@ import type {
   SetModeOptions,
   SmbusBus,
 } from '../hal/types.js';
+import { sleepSync } from '../hal/timing.js';
 
 /* ------------------------------------------------------------------ *
  * Protocolo                                                          *
@@ -263,33 +264,6 @@ const MODES_WITHOUT_COLOR: readonly number[] = [
 /* ------------------------------------------------------------------ *
  * Utilitarios                                                        *
  * ------------------------------------------------------------------ */
-
-/**
- * Pausa sincrona de verdade: `Atomics.wait` bloqueia a thread sem queimar CPU.
- * Precisa ser sincrona porque a interface `Controller` e sincrona.
- */
-const SLEEP_SLOT = new Int32Array(new SharedArrayBuffer(4));
-
-function sleepSync(ms: number): void {
-  if (ms <= 0) return;
-
-  // `Atomics.wait` dorme com a granularidade do timer do sistema — no Windows,
-  // ~15,6ms. Pedir 1ms custa 15. Como este driver espera 1ms entre CADA
-  // transacao, isso transformava uma atualizacao de 24 LEDs em 751ms; medido
-  // sem a espera, o mesmo trabalho leva 24ms.
-  //
-  // Para esperas curtas, girar e mais barato do que dormir quinze vezes mais
-  // do que o pedido. Acima disso, dormir de verdade e melhor que queimar CPU.
-  if (ms <= 2) {
-    const end = performance.now() + ms;
-    while (performance.now() < end) {
-      // espera ativa deliberada
-    }
-    return;
-  }
-
-  Atomics.wait(SLEEP_SLOT, 0, 0, ms);
-}
 
 function toByte(value: number): number {
   if (!Number.isFinite(value)) return 0;

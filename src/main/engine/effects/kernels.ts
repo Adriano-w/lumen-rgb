@@ -334,18 +334,35 @@ export function getKernel(kind: EffectKind): Kernel {
  * Renderiza um alvo inteiro, aplicando o brilho global por ultimo.
  * Reusa o array de saida para nao alocar a cada frame.
  */
+/**
+ * Onde este alvo fica dentro de uma fita virtual que cobre varios devices.
+ *
+ * Quando presente, os kernels espaciais enxergam a posicao GLOBAL do LED em
+ * vez da posicao dentro do device. E a diferenca entre "cada device fazendo o
+ * proprio arco-iris" e "um arco-iris atravessando a maquina".
+ */
+export interface SpanInfo {
+  offset: number;
+  total: number;
+}
+
 export function renderTarget(
   kind: EffectKind,
   params: EffectParams,
   ledCount: number,
   t: number,
   out: RGB[],
+  span?: SpanInfo,
 ): RGB[] {
   const kernel = getKernel(kind);
   const gain = Math.max(0, Math.min(100, params.brightness)) / 100;
 
+  // Sem span, o device e a propria fita.
+  const offset = span?.offset ?? 0;
+  const total = span?.total ?? ledCount;
+
   for (let i = 0; i < ledCount; i++) {
-    const c = kernel({ ledIndex: i, ledCount, t, params });
+    const c = kernel({ ledIndex: offset + i, ledCount: total, t, params });
     const existing = out[i];
     const r = Math.round(c.r * gain);
     const g = Math.round(c.g * gain);

@@ -6,6 +6,7 @@
  * de forma independente.
  */
 import type {
+  ApplyManyResult,
   Assignment,
   Device,
   Diagnostics,
@@ -34,6 +35,8 @@ export interface Engine {
 
   apply(target: TargetRef, assignment: Assignment): Promise<void>;
   applyAll(assignment: Assignment): Promise<void>;
+  /** Aplica a um subconjunto; o motor monta a fita virtual com esta ordem. */
+  applyMany(deviceIds: readonly string[], assignment: Assignment): Promise<ApplyManyResult>;
   resizeZone(deviceId: string, zoneIndex: number, ledsCount: number): Promise<void>;
 
   /** Aplica todas as entradas de um perfil de uma vez. */

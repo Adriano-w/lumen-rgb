@@ -20,7 +20,8 @@
     "probe:argb": "npm run probe:build && node .probe/scripts/probe-argb.js",
     "probe:stability": "npm run probe:build && node .probe/scripts/probe-stability.js",
     "probe:sync": "npm run probe:build && node .probe/scripts/probe-sync.js",
-    "demo:sync": "npm run probe:build && node .probe/scripts/demo-sync.js"
+    "demo:sync": "npm run probe:build && node .probe/scripts/demo-sync.js",
+    "probe:span": "npm run probe:build && node .probe/scripts/probe-span.js"
   },
   "dependencies": {
     "electron-log": "^5.4.4",
