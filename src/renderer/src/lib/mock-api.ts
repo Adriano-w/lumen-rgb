@@ -545,6 +545,7 @@ export function createMockApi(): LumenApi {
       const diagnostics: Diagnostics = {
         pawnIoInstalled: true,
         backendElevated: true,
+        smbusAvailable: true,
         conflictingProcesses: [],
         failedInterfaces: [],
       };

@@ -53,17 +53,16 @@ export const EFFECT_ICONS: Record<EffectKind, LucideIcon> = {
 /**
  * Efeitos espaciais: distribuem algo ao longo da fita, entao num alvo de
  * 1 LED eles nao tem o que mostrar.
+ *
+ * Isto era um `Set` escrito a mao aqui. Um `Set<EffectKind>` aceita qualquer
+ * subconjunto, entao esquecer um efeito novo nele nao daria erro de compilacao
+ * — exatamente o tipo de divergencia silenciosa que ja fez oito efeitos serem
+ * recusados no IPC. Agora a informacao mora no catalogo, com o resto dos
+ * metadados, e aqui so se consulta.
  */
-const SPATIAL: ReadonlySet<EffectKind> = new Set<EffectKind>([
-  'rainbow-wave',
-  'gradient',
-  'wave',
-  'comet',
-  'scan',
-  'chase',
-  'twinkle',
-  'alternating',
-]);
+const SPATIAL: ReadonlySet<EffectKind> = new Set<EffectKind>(
+  EFFECT_DESCRIPTORS.filter((d) => d.spatial).map((d) => d.kind),
+);
 
 export interface EffectUi {
   descriptor: EffectDescriptor;

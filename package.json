@@ -1,6 +1,6 @@
 {
   "name": "lumen",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Controle unificado de iluminacao RGB para Windows",
   "private": true,
   "type": "module",
@@ -21,7 +21,9 @@
     "probe:stability": "npm run probe:build && node .probe/scripts/probe-stability.js",
     "probe:sync": "npm run probe:build && node .probe/scripts/probe-sync.js",
     "demo:sync": "npm run probe:build && node .probe/scripts/demo-sync.js",
-    "probe:span": "npm run probe:build && node .probe/scripts/probe-span.js"
+    "probe:span": "npm run probe:build && node .probe/scripts/probe-span.js",
+    "probe:validation": "npm run probe:build && node .probe/scripts/probe-validation.js",
+    "probe:diagnostics": "npm run probe:build && node .probe/scripts/probe-diagnostics.js"
   },
   "dependencies": {
     "electron-log": "^5.4.4",

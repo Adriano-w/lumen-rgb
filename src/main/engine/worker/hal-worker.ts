@@ -30,6 +30,8 @@ import type { Controller } from '../hal/types.js';
 import { EffectRunner, targetKey, type EffectSink } from '../effects/runner.js';
 import { isEffectAvailable } from '../effects/kernels.js';
 import { detectConflictingProcesses, disableAutostart, stopProcessByLabel } from '../conflicts.js';
+import { isPawnIoInstalled } from '../hal/pawnio.js';
+import { isElevated } from '../../privilege.js';
 import type { ApplyManyResult, WorkerCommand, WorkerEvent, WorkerStartOptions } from './protocol.js';
 
 if (!parentPort) {
@@ -197,15 +199,24 @@ async function refreshDevices(): Promise<void> {
 async function getDiagnostics(): Promise<Diagnostics> {
   const conflicts = await detectConflictingProcesses();
   return {
-    pawnIoInstalled: !busProblems.some(
-      (p) => p.transport === 'smbus' && /nao esta instalado/i.test(p.reason),
-    ),
-    backendElevated: (buses?.smbus.length ?? 0) > 0,
+    pawnIoInstalled: isPawnIoInstalled(),
+    // Privilegio REAL do processo, nao "o SMBus abriu".
+    //
+    // Deduzir elevacao de "o barramento abriu" junta duas perguntas
+    // diferentes e produz conselho errado: num PC sem o driver PawnIO o SMBus
+    // nao abre, o diagnostico dizia "sem privilegio", e a interface pedia para
+    // reiniciar como administrador. O usuario reiniciava, o driver continuava
+    // faltando, e a mensagem nao mudava.
+    backendElevated: isElevated(),
+    smbusAvailable: (buses?.smbus.length ?? 0) > 0,
     conflictingProcesses: conflicts,
-    failedInterfaces: [
-      ...busProblems.map((p) => p.reason),
-      ...detectionFailures.map((f) => `Driver "${f.family}": ${f.error}`),
-    ],
+    // Somente falhas de DRIVER.
+    //
+    // Os problemas de barramento (driver ausente, falta de privilegio) ja sao
+    // o aviso principal; repeti-los aqui mostrava o mesmo problema duas vezes,
+    // e a segunda numa frase montada por concatenacao que nem se lia direito:
+    // "Na ultima varredura, O Lumen precisa de privilegio... nao respondeu."
+    failedInterfaces: detectionFailures.map((f) => `${f.family} (${f.error})`),
   };
 }
 

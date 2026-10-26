@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ShieldAlert, TriangleAlert, Unplug, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, ShieldAlert, TriangleAlert, Unplug, X } from 'lucide-react';
 
 import type { Diagnostics } from '@shared/types';
 import { Badge, Button } from '@renderer/components/ui';
@@ -13,6 +13,8 @@ interface Issue {
   explanation: string;
   /** O que o usuario deve fazer. */
   action: string;
+  /** Link que o usuario precisa abrir para cumprir a acao, quando houver. */
+  link?: { href: string; label: string };
 }
 
 /**
@@ -24,27 +26,45 @@ interface Issue {
 function collectIssues(diagnostics: Diagnostics): Issue[] {
   const issues: Issue[] = [];
 
+  // UM problema de cada vez, na ordem em que precisam ser resolvidos.
+  //
+  // Antes, driver ausente e falta de privilegio apareciam juntos — e pior,
+  // "sem privilegio" era deduzido de "o SMBus nao abriu", entao num PC sem o
+  // driver o app pedia para reiniciar como administrador. O usuario fazia
+  // isso, nada mudava, e a mesma mensagem continuava la. Pedir duas coisas
+  // quando so a primeira importa transforma um passo claro em adivinhacao.
   if (!diagnostics.pawnIoInstalled) {
     issues.push({
       id: 'pawnio',
       severity: 'critical',
-      title: 'Driver PawnIO nao encontrado',
+      title: 'Falta o driver PawnIO',
       explanation:
-        'A placa-mae e a memoria RAM conversam por SMBus, e o Windows so libera esse acesso com o driver PawnIO instalado. Sem ele, esses dois aparecem na lista mas nao mudam de cor.',
+        'A placa-mae e a memoria conversam por SMBus, e no Windows esse acesso so existe atraves de um driver. O PawnIO e assinado, roda em sandbox e e compativel com a Integridade de Memoria — por isso o Lumen usa ele em vez de carregar um driver de acesso irrestrito.',
       action:
-        'Instale o PawnIO (ele vem junto no instalador do Lumen) e reinicie o computador. Os perifericos USB continuam funcionando normalmente enquanto isso.',
+        'Baixe e instale o PawnIO em pawnio.eu, depois reabra o Lumen. Mouse, teclado, headset e placa de video continuam funcionando normalmente sem ele.',
+      link: { href: 'https://pawnio.eu', label: 'Abrir pawnio.eu' },
     });
-  }
-
-  if (!diagnostics.backendElevated) {
+  } else if (!diagnostics.backendElevated) {
+    // So faz sentido pedir privilegio depois que o driver existe.
     issues.push({
       id: 'elevation',
       severity: 'critical',
       title: 'O Lumen esta sem permissao de administrador',
       explanation:
-        'O driver PawnIO so aceita comandos de um processo elevado. Sem isso, a placa-mae e a memoria RAM ficam fora de alcance.',
+        'O driver PawnIO esta instalado, mas so aceita comandos de um processo elevado. Sem isso, a placa-mae e a memoria ficam fora de alcance.',
       action:
-        'Feche o Lumen e abra de novo com o botao direito, "Executar como administrador". Para nao repetir isso todo dia, marque "Abrir junto com o Windows" nas configuracoes.',
+        'Feche o Lumen pela bandeja e abra de novo com o botao direito, "Executar como administrador". Para nao repetir todo dia, ligue "Iniciar com o Windows" nas configuracoes — ele passa a subir ja elevado, sem pedir permissao de novo.',
+    });
+  } else if (!diagnostics.smbusAvailable) {
+    // Driver instalado, processo elevado, e mesmo assim nada. E outra coisa.
+    issues.push({
+      id: 'smbus',
+      severity: 'critical',
+      title: 'O barramento SMBus nao abriu',
+      explanation:
+        'O driver esta instalado e o Lumen tem permissao de administrador, entao o problema nao e nenhum dos dois. Pode ser um chipset ainda sem suporte, ou o servico do PawnIO parado.',
+      action:
+        'Reinicie o computador. Se continuar, confira se o servico PawnIO esta em execucao nos Servicos do Windows.',
     });
   }
 
@@ -60,12 +80,14 @@ function collectIssues(diagnostics: Diagnostics): Issue[] {
   }
 
   if (diagnostics.failedInterfaces.length > 0) {
+    const n = diagnostics.failedInterfaces.length;
     issues.push({
       id: 'interfaces',
       severity: 'attention',
-      title: 'Algumas interfaces nao responderam',
-      explanation: `Na ultima varredura, ${diagnostics.failedInterfaces.join(', ')} nao respondeu. Isso normalmente significa que um device daquele barramento ficou de fora da lista.`,
-      action: 'Tente "Procurar devices" de novo. Se continuar, reiniciar o computador resolve na maioria dos casos.',
+      title: n === 1 ? 'Um driver falhou' : `${n} drivers falharam`,
+      explanation: `Durante a varredura, ${diagnostics.failedInterfaces.join('; ')}. Devices dessas familias podem ter ficado de fora da lista; o resto foi detectado normalmente.`,
+      action:
+        'Tente "Procurar devices" de novo. Se continuar, reiniciar o computador resolve na maioria dos casos.',
     });
   }
 
@@ -154,10 +176,36 @@ export function DiagnosticsBanner({
                 </p>
 
                 {isOpen ? (
-                  <p className="mt-2 rounded-md bg-surface-1/70 px-3 py-2.5 text-sm leading-relaxed text-foreground">
-                    <span className="font-medium">O que fazer: </span>
-                    {issue.action}
-                  </p>
+                  <div className="mt-2 rounded-md bg-surface-1/70 px-3 py-2.5">
+                    <p className="text-sm leading-relaxed text-foreground">
+                      <span className="font-medium">O que fazer: </span>
+                      {issue.action}
+                    </p>
+
+                    {/*
+                      Quando a acao depende de baixar algo, o link vai junto.
+                      Mandar o usuario procurar um site que a mensagem so cita
+                      e transformar um passo em duas tarefas.
+                      O `setWindowOpenHandler` do processo principal abre no
+                      navegador do sistema, nunca dentro do app.
+                    */}
+                    {issue.link ? (
+                      <a
+                        href={issue.link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(
+                          'mt-2.5 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5',
+                          'text-sm font-medium text-primary-foreground bg-primary',
+                          'transition-colors hover:bg-primary/90',
+                          'outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                        )}
+                      >
+                        {issue.link.label}
+                        <ExternalLink className="size-3.5" aria-hidden />
+                      </a>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 <button

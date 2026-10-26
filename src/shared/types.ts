@@ -220,6 +220,19 @@ export interface EffectDescriptor {
   minColors: number;
   maxColors: number;
   /**
+   * Precisa de varios LEDs para fazer sentido.
+   *
+   * Um efeito espacial distribui algo ao longo da fita; num alvo de 1 LED ele
+   * nao tem o que mostrar. A interface usa isto para nao oferecer, por
+   * exemplo, "Varredura" quando so a GPU (1 LED) esta selecionada.
+   *
+   * E um julgamento, nao uma propriedade mecanica: `fire` tambem usa a posicao
+   * do LED, mas num LED so ainda parece fogo, entao nao e espacial para este
+   * fim. Por isso mora aqui, junto do resto dos metadados de interface, e nao
+   * numa lista a parte que pode divergir em silencio.
+   */
+  spatial: boolean;
+  /**
    * Precisa capturar audio ou tela. Efeitos assim ainda nao tem kernel neste
    * build — `isEffectAvailable()` no motor e a fonte da verdade.
    */
@@ -232,105 +245,105 @@ export const EFFECT_DESCRIPTORS: readonly EffectDescriptor[] = [
     label: 'Cor fixa',
     description: 'Uma cor so, sem movimento.',
     usesSpeed: false, usesDirection: false, usesSpread: false,
-    minColors: 1, maxColors: 1, requiresCapture: false,
+    minColors: 1, maxColors: 1, spatial: false, requiresCapture: false,
   },
   {
     kind: 'breathing',
     label: 'Respiracao',
     description: 'A cor acende e apaga suavemente, com pausa no escuro.',
     usesSpeed: true, usesDirection: false, usesSpread: false,
-    minColors: 1, maxColors: 4, requiresCapture: false,
+    minColors: 1, maxColors: 4, spatial: false, requiresCapture: false,
   },
   {
     kind: 'strobe',
     label: 'Strobe',
     description: 'Flash seco, liga e desliga sem transicao.',
     usesSpeed: true, usesDirection: false, usesSpread: false,
-    minColors: 1, maxColors: 4, requiresCapture: false,
+    minColors: 1, maxColors: 4, spatial: false, requiresCapture: false,
   },
   {
     kind: 'color-cycle',
     label: 'Ciclo de cores',
     description: 'O device inteiro percorre o espectro, ou a sua paleta.',
     usesSpeed: true, usesDirection: true, usesSpread: false,
-    minColors: 0, maxColors: 8, requiresCapture: false,
+    minColors: 0, maxColors: 8, spatial: false, requiresCapture: false,
   },
   {
     kind: 'rainbow-wave',
     label: 'Onda arco-iris',
     description: 'Arco-iris que corre ao longo dos LEDs.',
     usesSpeed: true, usesDirection: true, usesSpread: true,
-    minColors: 0, maxColors: 0, requiresCapture: false,
+    minColors: 0, maxColors: 0, spatial: true, requiresCapture: false,
   },
   {
     kind: 'gradient',
     label: 'Degrade',
     description: 'A paleta esticada ao longo do device, deslizando.',
     usesSpeed: true, usesDirection: true, usesSpread: false,
-    minColors: 2, maxColors: 8, requiresCapture: false,
+    minColors: 2, maxColors: 8, spatial: true, requiresCapture: false,
   },
   {
     kind: 'wave',
     label: 'Onda',
     description: 'Um pulso da sua cor viajando pelos LEDs.',
     usesSpeed: true, usesDirection: true, usesSpread: true,
-    minColors: 1, maxColors: 2, requiresCapture: false,
+    minColors: 1, maxColors: 2, spatial: true, requiresCapture: false,
   },
   {
     kind: 'comet',
     label: 'Cometa',
     description: 'Um ponto brilhante com rastro que se apaga atras.',
     usesSpeed: true, usesDirection: true, usesSpread: true,
-    minColors: 1, maxColors: 2, requiresCapture: false,
+    minColors: 1, maxColors: 2, spatial: true, requiresCapture: false,
   },
   {
     kind: 'scan',
     label: 'Varredura',
     description: 'Uma barra que vai e volta, estilo Knight Rider.',
     usesSpeed: true, usesDirection: false, usesSpread: true,
-    minColors: 1, maxColors: 2, requiresCapture: false,
+    minColors: 1, maxColors: 2, spatial: true, requiresCapture: false,
   },
   {
     kind: 'chase',
     label: 'Marcha',
     description: 'Pontos espacados desfilando em sequencia.',
     usesSpeed: true, usesDirection: true, usesSpread: true,
-    minColors: 1, maxColors: 4, requiresCapture: false,
+    minColors: 1, maxColors: 4, spatial: true, requiresCapture: false,
   },
   {
     kind: 'twinkle',
     label: 'Cintilancia',
     description: 'LEDs acendem e apagam em pontos aleatorios.',
     usesSpeed: true, usesDirection: false, usesSpread: false,
-    minColors: 1, maxColors: 4, requiresCapture: false,
+    minColors: 1, maxColors: 4, spatial: true, requiresCapture: false,
   },
   {
     kind: 'fire',
     label: 'Chama',
     description: 'Fogo vivo, em tons de vermelho e amarelo.',
     usesSpeed: true, usesDirection: false, usesSpread: false,
-    minColors: 0, maxColors: 0, requiresCapture: false,
+    minColors: 0, maxColors: 0, spatial: false, requiresCapture: false,
   },
   {
     kind: 'alternating',
     label: 'Alternado',
     description: 'Duas cores trocando de lugar entre os LEDs.',
     usesSpeed: true, usesDirection: false, usesSpread: true,
-    minColors: 2, maxColors: 2, requiresCapture: false,
+    minColors: 2, maxColors: 2, spatial: true, requiresCapture: false,
   },
   {
     kind: 'audio-level',
     label: 'Reagir ao som',
     description: 'A iluminacao acompanha o audio do sistema.',
     usesSpeed: false, usesDirection: false, usesSpread: false,
-    minColors: 1, maxColors: 4, requiresCapture: true,
+    minColors: 1, maxColors: 4, spatial: false, requiresCapture: true,
   },
   {
     kind: 'ambient-screen',
     label: 'Ambiente da tela',
     description: 'As cores acompanham o que esta na tela.',
     usesSpeed: false, usesDirection: false, usesSpread: false,
-    minColors: 0, maxColors: 0, requiresCapture: true,
+    minColors: 0, maxColors: 0, spatial: false, requiresCapture: true,
   },
 ];
 
@@ -397,10 +410,23 @@ export type EngineStatus =
 
 /** Problemas de ambiente que a UI precisa explicar e, quando possivel, resolver. */
 export interface Diagnostics {
-  /** Driver PawnIO presente e rodando — necessario para SMBus (placa-mae, RAM). */
+  /** Driver PawnIO presente — necessario para SMBus (placa-mae, RAM). */
   pawnIoInstalled: boolean;
-  /** Backend rodando elevado — necessario para PawnIO. */
+  /**
+   * O processo tem privilegio de administrador.
+   *
+   * Pergunta separada de `smbusAvailable` de proposito. Juntar as duas ja
+   * produziu conselho errado em laco: sem o driver instalado o barramento nao
+   * abre, a interface concluia "falta privilegio" e pedia para reiniciar como
+   * administrador — o que nao resolvia nada, e a mensagem nunca mudava.
+   */
   backendElevated: boolean;
+  /**
+   * O barramento SMBus abriu. Precisa de PawnIO instalado E privilegio; quando
+   * e falso com os dois presentes, o problema e outro (chipset sem suporte,
+   * driver parado) e `failedInterfaces` tem o detalhe.
+   */
+  smbusAvailable: boolean;
   /** Software OEM concorrente detectado, que disputa o SMBus. */
   conflictingProcesses: string[];
   /** Interfaces I2C/SMBus que falharam na ultima deteccao. */

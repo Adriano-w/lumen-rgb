@@ -51,6 +51,7 @@ function createDeadEngine(reason: string): Engine {
       Promise.resolve({
         pawnIoInstalled: false,
         backendElevated: false,
+        smbusAvailable: false,
         conflictingProcesses: [],
         failedInterfaces: [],
       }),

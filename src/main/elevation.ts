@@ -17,25 +17,9 @@
 import { app } from 'electron';
 import { spawn } from 'node:child_process';
 
-let cached: boolean | null = null;
-
-/** True se o processo atual tem privilegio de administrador. */
-export function isElevated(): boolean {
-  if (cached !== null) return cached;
-
-  try {
-    // `IsUserAnAdmin` e a checagem canonica e nao tem efeito colateral.
-    // Tentar abrir um recurso privilegiado tambem funcionaria, mas polui o
-    // log de auditoria do sistema.
-    const koffi = require('koffi') as typeof import('koffi');
-    const shell32 = koffi.load('shell32.dll');
-    const IsUserAnAdmin = shell32.func('int __stdcall IsUserAnAdmin()') as () => number;
-    cached = IsUserAnAdmin() !== 0;
-  } catch {
-    cached = false;
-  }
-  return cached;
-}
+// `isElevated` mora em `privilege.ts`, sem dependencia do Electron, porque o
+// worker de hardware tambem precisa da resposta e nao tem `app`.
+export { isElevated } from './privilege.js';
 
 /**
  * Reabre o Lumen com privilegio e encerra esta instancia.
