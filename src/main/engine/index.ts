@@ -196,16 +196,21 @@ class LumenEngine extends EventEmitter implements Engine {
 
       this.devices = result.devices;
 
+      // Zero devices NAO e falha do servico.
+      //
+      // Antes isso virava `state: 'error'`, e a UI renderiza estado de erro
+      // como "o Lumen perdeu contato com o servico de iluminacao". Mentira: o
+      // worker subiu, respondeu, e disse honestamente que nao achou nada. O
+      // usuario via o app se declarar quebrado em cima do aviso que explicava
+      // o problema de verdade — dois diagnosticos concorrentes para um fato.
+      //
+      // Quem encontrou nada ja tem quem conte: o `DiagnosticsBanner` aponta a
+      // causa (driver, privilegio ou barramento) e a tela vazia explica o
+      // resto. O servico esta conectado; e so a casa que esta vazia.
       if (this.devices.length === 0 && result.problems.length > 0) {
-        const needsElevation = result.problems.some((p) => p.needsElevation);
-        this.setStatus({
-          state: 'error',
-          reason: 'Nenhum hardware de iluminacao foi encontrado.',
-          hint: needsElevation
-            ? 'Reinicie o Lumen como administrador para acessar a placa-mae e a memoria.'
-            : result.problems[0]?.hint,
-        });
-        return;
+        for (const problem of result.problems) {
+          this.log.info(`nenhum device encontrado: ${problem.reason}`);
+        }
       }
 
       this.setStatus({ state: 'connected', protocolVersion: 0, serverVersion: 0 });

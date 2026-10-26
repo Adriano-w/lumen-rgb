@@ -125,8 +125,14 @@ export class PawnIoSmbus implements SmbusBus {
 
   constructor(
     private readonly module: PawnIoModule,
-    /** Porta do PIIX4. Chipsets AMD expoem duas. */
-    private readonly port: number,
+    /**
+     * Porta do PIIX4, ou `null` quando o chipset nao tem selecao de porta.
+     *
+     * O PIIX4 (AMD) expoe dois barramentos atras de um unico modulo e exige
+     * escolher um antes de cada transacao. O i801 (Intel) expoe um so, e o
+     * modulo dele nem exporta `ioctl_piix4_port_sel` — chamar daria erro.
+     */
+    private readonly port: number | null,
     label: string,
   ) {
     this.name = label;
@@ -158,6 +164,20 @@ export class PawnIoSmbus implements SmbusBus {
     return buses;
   }
 
+  /**
+   * Abre o barramento de um chipset Intel (i801).
+   *
+   * Mesma interface de modulo do PIIX4 menos a selecao de porta: o i801 tem
+   * um barramento so. O proprio `PawnIO_LoadModuleEx` recusa o modulo quando
+   * o chipset nao e compativel, entao carregar com sucesso ja e a deteccao —
+   * nao ha sondagem a fazer depois.
+   */
+  static openI801(moduleDir: string): PawnIoSmbus[] {
+    const modulePath = path.join(moduleDir, 'SmbusI801.bin');
+    const mod = PawnIoModule.load(modulePath);
+    return [new PawnIoSmbus(mod, null, 'SMBus i801')];
+  }
+
   private xfer(
     addr: number,
     readWrite: number,
@@ -170,7 +190,10 @@ export class PawnIoSmbus implements SmbusBus {
     try {
       // A porta e estado do modulo, nao da transacao: precisa ser reafirmada
       // porque outro barramento do mesmo modulo pode te-la trocado.
-      this.module.execute('ioctl_piix4_port_sel', [this.port], 1);
+      // No i801 nao existe porta, e o ioctl nem existe no modulo.
+      if (this.port !== null) {
+        this.module.execute('ioctl_piix4_port_sel', [this.port], 1);
+      }
 
       const input = new Array<number | bigint>(XFER_IN_SIZE).fill(0);
       input[0] = addr;

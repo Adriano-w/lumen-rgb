@@ -62,9 +62,13 @@ function collectIssues(diagnostics: Diagnostics): Issue[] {
       severity: 'critical',
       title: 'O barramento SMBus nao abriu',
       explanation:
-        'O driver esta instalado e o Lumen tem permissao de administrador, entao o problema nao e nenhum dos dois. Pode ser um chipset ainda sem suporte, ou o servico do PawnIO parado.',
+        'O driver esta instalado e o Lumen tem permissao de administrador, entao o problema nao e nenhum dos dois. O Lumen fala com os controladores SMBus i801 (Intel) e PIIX4 (AMD); nenhum dos dois respondeu nesta maquina. O chipset pode ser um que ainda nao suportamos.',
       action:
-        'Reinicie o computador. Se continuar, confira se o servico PawnIO esta em execucao nos Servicos do Windows.',
+        'Reinicie o computador e confira se o servico PawnIO esta em execucao nos Servicos do Windows. Se continuar, abra uma issue no GitHub dizendo qual e a sua placa-mae — e o que precisamos para adicionar o chipset.',
+      link: {
+        href: 'https://github.com/Adriano-w/lumen-rgb/issues/new',
+        label: 'Relatar o chipset',
+      },
     });
   }
 

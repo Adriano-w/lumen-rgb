@@ -106,34 +106,58 @@ function openSmbus(log: (msg: string) => void, problems: BusProblem[]): SmbusBus
     return [];
   }
 
-  try {
-    // Hoje so o caminho AMD (PIIX4) esta implementado — e o chipset desta
-    // maquina. Intel usa SmbusI801.bin, com a mesma interface de modulo.
-    const buses = PawnIoSmbus.openPiix4(pawnIoModuleDir());
+  // Uma maquina e AMD ou Intel, mas o app nao sabe qual antes de tentar: o
+  // proprio PawnIO recusa um modulo cujo chipset nao casa, entao a tentativa
+  // E a deteccao. Tentamos os dois e ficamos com o que abrir.
+  //
+  // Presumir PIIX4 (AMD) era um buraco silencioso: num PC Intel o modulo nao
+  // carregava, o SMBus ficava fechado, e o app dizia "chipset ainda sem
+  // suporte" com o SmbusI801.bin empacotado ali do lado, nunca carregado.
+  const chipsets: Array<{ label: string; open: (dir: string) => SmbusBus[] }> = [
+    { label: 'i801 (Intel)', open: (dir) => PawnIoSmbus.openI801(dir) },
+    { label: 'PIIX4 (AMD)', open: (dir) => PawnIoSmbus.openPiix4(dir) },
+  ];
+
+  const buses: SmbusBus[] = [];
+  const failures: string[] = [];
+  let elevationProblem: PawnIoUnavailableError | null = null;
+
+  for (const { label, open } of chipsets) {
+    try {
+      buses.push(...open(pawnIoModuleDir()));
+      log(`SMBus ${label} aberto`);
+    } catch (err) {
+      // Falta de privilegio vale para todos os chipsets: nao e "este chipset
+      // nao e o seu", e o driver inteiro fora de alcance.
+      if (err instanceof PawnIoUnavailableError && err.reason === 'not-elevated') {
+        elevationProblem = err;
+        break;
+      }
+      failures.push(`${label}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  if (buses.length > 0) {
     log(`SMBus pronto via PawnIO v${getPawnIoVersion() ?? '?'}: ${buses.length} barramento(s)`);
     return buses;
-  } catch (err) {
-    if (err instanceof PawnIoUnavailableError) {
-      problems.push({
-        transport: 'smbus',
-        reason:
-          err.reason === 'not-elevated'
-            ? 'O Lumen precisa de privilegio de administrador para acessar a placa-mae e a memoria.'
-            : err.message,
-        hint:
-          err.reason === 'not-elevated'
-            ? 'Reinicie o Lumen como administrador.'
-            : 'Verifique se o servico PawnIO esta rodando.',
-        needsElevation: err.reason === 'not-elevated',
-      });
-    } else {
-      problems.push({
-        transport: 'smbus',
-        reason: `SMBus indisponivel: ${err instanceof Error ? err.message : String(err)}`,
-      });
-    }
-    return [];
   }
+
+  if (elevationProblem) {
+    problems.push({
+      transport: 'smbus',
+      reason:
+        'O Lumen precisa de privilegio de administrador para acessar a placa-mae e a memoria.',
+      hint: 'Reinicie o Lumen como administrador.',
+      needsElevation: true,
+    });
+  } else {
+    problems.push({
+      transport: 'smbus',
+      reason: 'Nenhum controlador SMBus conhecido respondeu neste chipset.',
+      hint: `Tentamos: ${failures.join('; ')}`,
+    });
+  }
+  return [];
 }
 
 /* ------------------------------------------------------------------ *
